@@ -1,0 +1,19 @@
+# Node dependencies
+node_modules/
+
+# Frontend build output
+frontend/dist/
+
+# Backend caches, compiled files
+backend/__pycache__/
+backend/*.pyc
+
+# CLI binaries
+cli/*.exe
+cli/*.out
+
+# Environment variables
+.env
+
+# Logs
+*.log

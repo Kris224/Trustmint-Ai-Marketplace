@@ -1,0 +1,44 @@
+.header{
+  border-bottom:1px solid rgba(0,0,0,0.06);
+  padding:12px 0;
+  background:var(--bg);
+  position:sticky;
+  top:0;
+  z-index:50;
+}
+.inner{
+  max-width:1100px;
+  margin:0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:6px;
+}
+.brand a{
+  text-decoration:none;
+  color:var(--text);
+  font-weight:600;
+  font-size:20px;
+}
+.nav{
+  display:flex;
+  gap:20px;
+}
+.nav a{ text-decoration:none; color:var(--muted) }
+.active{ color:var(--text); font-weight:600 }
+.actions{ display:flex; gap:10px; align-items:center }
+.themeBtn{
+  border:1px solid rgba(0,0,0,0.06);
+  background:transparent;
+  padding:8px;
+  border-radius:8px;
+  cursor:pointer;
+}
+.loginBtn{
+  background:var(--text);
+  color:var(--card);
+  padding:8px 12px;
+  border-radius:8px;
+  text-decoration:none;
+}

@@ -1,0 +1,4 @@
+.steps{display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-top:12px}
+@media(max-width:1000px){
+  .steps{grid-template-columns:repeat(2,1fr)}
+}
