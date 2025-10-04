@@ -6,6 +6,7 @@ import Developer from './pages/Developer'
 import Login from './pages/Login'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
+import ConnectWallet from "./components/ConnectWallet";
 
 export default function App(){
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light')
@@ -17,6 +18,7 @@ export default function App(){
   return (
     <>
       <Navbar theme={theme} setTheme={setTheme} />
+      <ConnectWallet />
       <div style={{minHeight:'calc(100vh - 220px)'}}>
         <Routes>
           <Route path='/' element={<Home/>} />
