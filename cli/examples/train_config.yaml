@@ -1,5 +1,0 @@
-# Example training config (placeholder)
-model:
-  name: iris-demo
-  epochs: 1
-  batch_size: 16

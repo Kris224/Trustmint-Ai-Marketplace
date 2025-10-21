@@ -1,0 +1,19 @@
+
+training_script: "python3 train.py"
+dataset_dir: "./dataset"     
+model_output_dir: "./output" 
+
+
+environment:  
+  network: "none"
+  read_only_root: false
+  
+
+  volumes:
+    - source: "./dataset"
+      target: "/app/dataset"
+      read_only: true
+      
+    - source: "."
+      target: "/app/project"
+      read_only: false
