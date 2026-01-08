@@ -1,0 +1,181 @@
+/* src/pages/Marketplace.module.css */
+.hero {
+  padding: var(--spacing-xl) 0 var(--spacing-lg);
+  text-align: center;
+  background: var(--bg);  /* Plain bg, no gradient */
+  color: var(--text);
+  border-radius: 0;  /* Remove curve */
+  position: relative;
+}
+
+.hero h2 {
+  margin-bottom: var(--spacing-sm);
+  text-shadow: none;  /* No shadow for clean look */
+}
+
+.searchRow {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: center;
+  margin-top: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.searchRow input, .searchRow select {
+  padding: var(--spacing-sm);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  transition: var(--transition);
+  backdrop-filter: none;  /* No blur */
+}
+
+.searchRow input::placeholder {
+  color: var(--text-secondary);
+}
+
+.searchRow input:focus, .searchRow select:focus {
+  border-color: var(--primary);
+  background: var(--card);
+  outline: none;
+}
+
+.filters {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) 0;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.filterBtn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: 1px solid var(--border);
+  background: transparent;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: var(--transition);
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.filterActive {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.grid {
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-lg);
+  margin-top: var(--spacing-md);
+}
+
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: var(--spacing-md);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  opacity: 0;
+  transition: var(--transition);
+}
+
+.card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-lg);
+}
+
+.card:hover::before {
+  opacity: 1;
+}
+
+.icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.viewBtn {
+  float: right;
+  background: var(--primary);
+  color: white;
+  border-radius: var(--radius);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 0;
+  margin-left: var(--spacing-sm);
+  font-size: 0.875rem;
+  transition: var(--transition);
+  text-decoration: none;
+}
+
+.viewBtn:hover {
+  background: var(--secondary);
+  transform: translateY(-1px);
+}
+
+.pager {
+  display: inline-flex;
+  gap: var(--spacing-xs);
+  align-items: center;
+  background: var(--card);
+  padding: var(--spacing-xs);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.pageActive, .pager button {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--transition);
+  font-weight: 500;
+}
+
+.pageActive {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.pager button:hover {
+  background: var(--primary);
+  color: white;
+}
+
+@media (max-width: 1000px) {
+  .grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 600px) {
+  .searchRow { flex-direction: column; align-items: center; }
+  .searchRow input { width: 100%; }
+  .filters { justify-content: flex-start; overflow-x: auto; padding-bottom: var(--spacing-xs); }
+  .grid { grid-template-columns: 1fr; }
+}
