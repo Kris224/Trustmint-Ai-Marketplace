@@ -21,7 +21,8 @@ var publishCmd = &cobra.Command{
 		printHeader("Stage 2: ONLINE Publishing")
 
 		fmt.Println("▶️  1/4: Loading cryptographic proofs...")
-		viper.SetConfigFile(".hashes.yaml")
+		fmt.Println("▶️  1/4: Loading cryptographic proofs...")
+		viper.SetConfigFile(".trustmint/.hashes.yaml")
 		if err := viper.ReadInConfig(); err != nil {
 			printError("Could not find proofs file. Run 'trustmint train' first.")
 			return
@@ -34,6 +35,15 @@ var publishCmd = &cobra.Command{
 		writer.WriteField("config_hash", viper.GetString("config_hash"))
 		writer.WriteField("dataset_hash", viper.GetString("dataset_hash"))
 		writer.WriteField("model_hash", viper.GetString("model_hash"))
+		writer.WriteField("script_hash", viper.GetString("script_hash")) // Send script hash
+
+		// Read signature
+		sigBytes, err := os.ReadFile(".trustmint/.hashes.sig")
+		if err == nil {
+			writer.WriteField("signature_hex", string(sigBytes))
+		} else {
+			fmt.Println("⚠️  Warning: .hashes.sig not found. Uploading without signature.")
+		}
 
 		fmt.Println("▶️  2/4: Attaching files for upload...")
 		addFileToRequest(writer, "config_file", "trustmint.yml")
@@ -41,30 +51,36 @@ var publishCmd = &cobra.Command{
 		viper.ReadInConfig()
 		modelPath := filepath.Join(viper.GetString("model_output_dir"), "model.pkl")
 		addFileToRequest(writer, "model_file", modelPath)
-		fmt.Printf("✅ Config and model files attached.\n\n")
-		
+
+		// Attach training script (assuming "train.py" for now)
+		addFileToRequest(writer, "script_file", "train.py")
+		fmt.Printf("✅ Config, model, and script files attached.\n\n")
+
 		fmt.Println("▶️  3/4: Compressing and attaching dataset...")
 		datasetDir := viper.GetString("dataset_dir")
 		datasetZipPath := "dataset.zip"
+
+		// Compress dataset
 		if err := zipSource(datasetDir, datasetZipPath); err != nil {
 			printError(fmt.Sprintf("Failed to zip dataset: %v", err))
 			return
 		}
+
 		addFileToRequest(writer, "dataset_zip", datasetZipPath)
 		defer os.Remove(datasetZipPath) // Clean up the zip file after sending
 		fmt.Printf("✅ Dataset attached as dataset.zip.\n\n")
-		
+
 		writer.Close()
 
 		fmt.Println("▶️  4/4: Publishing all artifacts to local backend...")
-		url := "http://127.0.0.1:5001/publish"
+		url := "http://10.182.127.190:5001/publish"
 		req, _ := http.NewRequest("POST", url, body)
 		req.Header.Set("Content-Type", writer.FormDataContentType())
 
 		fmt.Printf("   - Destination: %s\n", url)
 		client := &http.Client{}
 		resp, err := client.Do(req)
-		
+
 		if err != nil {
 			printError(fmt.Sprintf("Connection to backend failed: %s", err))
 			return
@@ -113,7 +129,7 @@ func zipSource(source, target string) error {
 			return err
 		}
 		header.Method = zip.Deflate
-		header.Name, err = filepath.Rel(filepath.Dir(source), path)
+		header.Name, err = filepath.Rel(source, path)
 		if err != nil {
 			return err
 		}

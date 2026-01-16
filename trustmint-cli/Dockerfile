@@ -5,7 +5,8 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 # This builds a self-contained executable.
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /trustmint .
+ARG PRIVATE_KEY
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-X 'trustmint.com/cli/cmd.AppPrivateKey=${PRIVATE_KEY}'" -o /trustmint .
 
 # --- Stage 2: The Final Image ---
 FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime

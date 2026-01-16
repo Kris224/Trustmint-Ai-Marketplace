@@ -1,6 +1,6 @@
 set -e
 
-DOCKER_IMAGE="kris20204/trustmint-runner:latest"
+DOCKER_IMAGE="20demo/trustmint-cli:latest"
 
 echo "▶️  Starting Trustmint ONLINE Publishing..."
 echo "----------------------------------------------------"
