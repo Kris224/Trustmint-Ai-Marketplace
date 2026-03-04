@@ -1,18 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import styles from './Marketplace.module.css';
 
-const ModelCard = ({ name, price, score, category }) => (
+const BACKEND = 'http://localhost:5001';
+
+const ModelCard = ({ token_id, name, price_eth, creator, ipfs_cid, listing_id, verified }) => (
   <div className={styles.card}>
-    <div className={styles.icon}></div>
+    <div className={styles.icon}>🤖</div>
     <div>
       <h4>{name}</h4>
-      <p className="small-muted">
-        Trust Score: {score} <span style={{ float: 'right' }}>★ 4.7</span>
+      <p className="small-muted" style={{ wordBreak: 'break-all' }}>
+        Creator: {creator ? `${creator.slice(0, 6)}...${creator.slice(-4)}` : 'Unknown'}
       </p>
+      <p className="small-muted">
+        {verified ? '✅ Verified' : '⏳ Unverified'}{' '}
+        <span style={{ float: 'right' }}>Token #{token_id}</span>
+      </p>
+      {ipfs_cid && (
+        <p className="small-muted" style={{ fontSize: '0.7rem', wordBreak: 'break-all' }}>
+          IPFS: {ipfs_cid.slice(0, 20)}...
+        </p>
+      )}
       <div style={{ marginTop: 12 }}>
-        <strong style={{ fontSize: 20 }}>${price}</strong>
-        <Link to={`/model/${name.toLowerCase().replace(/\s+/g, '-')}`} className={styles.viewBtn}>
+        <strong style={{ fontSize: 20 }}>{price_eth ? `${price_eth} ETH` : 'N/A'}</strong>
+        <Link
+          to={`/model/${token_id}`}
+          className={styles.viewBtn}
+        >
           View Details
         </Link>
       </div>
@@ -23,30 +37,52 @@ const ModelCard = ({ name, price, score, category }) => (
 export default function Marketplace() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [models, setModels] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   const categories = ['All', 'NLP', 'Vision', 'Speech', 'Data Processing'];
 
-  const rawModels = [
-    { name: 'TextGenX', price: 49, score: 92, category: 'NLP' },
-    { name: 'VisionPro', price: 39, score: 88, category: 'Vision' },
-    { name: 'SpeechAI Lite', price: 59, score: 95, category: 'Speech' },
-    { name: 'DataSummarizer', price: 29, score: 85, category: 'Data Processing' },
-  ];
+  // Fetch live models from backend (reads from blockchain)
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(`${BACKEND}/api/models`);
+        if (!res.ok) throw new Error(`Server error: ${res.status}`);
+        const data = await res.json();
+        setModels(data);
+        setError(null);
+      } catch (err) {
+        console.error('Failed to fetch models:', err);
+        setError('Could not connect to backend. Is the server running?');
+        setModels([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const filteredModels = rawModels.filter((model) => {
-    const matchesSearch = model.name.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory = selectedCategory === 'All' || model.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+    fetchModels();
+    // Refresh every 15 seconds so new mints show up automatically
+    const interval = setInterval(fetchModels, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const filteredModels = models.filter((model) =>
+    model.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <main>
       <section className={`${styles.hero} page-section`}>
         <div className="container">
           <h2>AI Model Marketplace</h2>
-          <p className="small-muted">Discover, evaluate, and purchase trusted AI models with verified performance metrics and community reviews.</p>
+          <p className="small-muted">
+            Discover, evaluate, and purchase trusted AI models with verified provenance on the blockchain.
+          </p>
           <div className={styles.searchRow}>
-            <input 
-              placeholder="Search AI models..." 
+            <input
+              placeholder="Search AI models..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -75,21 +111,45 @@ export default function Marketplace() {
       </section>
 
       <section className="container page-section">
-        <h3>Available Models ({filteredModels.length})</h3>
-        <div className={`${styles.grid} grid grid-4`}>
-          {filteredModels.map((model, index) => (
-            <ModelCard key={index} {...model} />
-          ))}
-        </div>
+        {loading && (
+          <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+            ⏳ Loading models from blockchain...
+          </p>
+        )}
 
-        <div style={{ textAlign: 'center', marginTop: 28 }}>
-          <div className={styles.pager}>
-            <button className={styles.pageActive}>1</button>
-            <button>2</button>
-            <button>3</button>
-            <button>&rsaquo;</button>
+        {error && (
+          <div style={{
+            padding: '1rem',
+            background: 'rgba(239,68,68,0.1)',
+            border: '1px solid rgba(239,68,68,0.3)',
+            borderRadius: 'var(--radius)',
+            marginBottom: '1rem'
+          }}>
+            ⚠️ {error}
           </div>
-        </div>
+        )}
+
+        {!loading && !error && filteredModels.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+            <p style={{ fontSize: '3rem' }}>🤖</p>
+            <h3>No models listed yet</h3>
+            <p>Train and publish your first model using the Trustmint CLI!</p>
+            <Link to="/developer" className="btn btn-primary" style={{ marginTop: '1rem' }}>
+              Go to Developer Dashboard
+            </Link>
+          </div>
+        )}
+
+        {!loading && filteredModels.length > 0 && (
+          <>
+            <h3>Available Models ({filteredModels.length})</h3>
+            <div className={`${styles.grid} grid grid-4`}>
+              {filteredModels.map((model) => (
+                <ModelCard key={model.listing_id} {...model} />
+              ))}
+            </div>
+          </>
+        )}
       </section>
     </main>
   );

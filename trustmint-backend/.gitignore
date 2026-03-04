@@ -1,0 +1,22 @@
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Sensitive Cryptographic Keys
+*.pem
+*.key
+.env
+
+# Uploaded Artifacts
+uploads/
+
+# OS Specific Files
+.DS_Store
+Thumbs.db
