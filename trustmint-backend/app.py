@@ -24,6 +24,25 @@ load_dotenv()  # Load variables from .env file into os.environ
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# Per-model artifact folder helper
+def model_folder(model_hash: str) -> str:
+    folder = os.path.join(UPLOAD_FOLDER, model_hash[:16])
+    os.makedirs(folder, exist_ok=True)
+    return folder
+
+# Listing preferences store (simple JSON file on disk)
+PREFS_FILE = os.path.join(UPLOAD_FOLDER, 'listing_prefs.json')
+
+def load_prefs() -> dict:
+    if os.path.exists(PREFS_FILE):
+        with open(PREFS_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+def save_prefs(prefs: dict):
+    with open(PREFS_FILE, 'w') as f:
+        json.dump(prefs, f, indent=2)
+
 # ─── Configuration ────────────────────────────────────────────────────────────
 GOLDEN_PUBLIC_KEY_PEM = """-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEXVFGF4a7aEKlcaR20aOOJXUqvZbx
@@ -421,16 +440,20 @@ def handle_publish():
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
 
-    # ── 3. Save artifacts ──────────────────────────────────────────────────────
+    # ── 3. Save artifacts per model hash ─────────────────────────────────────
     print("\n▶️  3/5: Saving verified artifacts...")
-    model_save_path     = os.path.join(UPLOAD_FOLDER, 'model.pkl')
-    dataset_save_path   = os.path.join(UPLOAD_FOLDER, 'dataset.zip')
-    config_file.save(os.path.join(UPLOAD_FOLDER, 'trustmint.yml'))
+    mfolder = model_folder(cli_model_hash)
+    model_save_path     = os.path.join(mfolder, 'model.pkl')
+    dataset_save_path   = os.path.join(mfolder, 'dataset.zip')
+    config_file.save(os.path.join(mfolder, 'trustmint.yml'))
     model_file.save(model_save_path)
     dataset_zip.seek(0)
     dataset_zip.save(dataset_save_path)
-    script_file.save(os.path.join(UPLOAD_FOLDER, 'train.py'))
-    print("   ✅ All files saved locally.")
+    script_file.save(os.path.join(mfolder, 'train.py'))
+    # Also keep flat copies for legacy compatibility
+    model_file.seek(0); model_file.save(os.path.join(UPLOAD_FOLDER, 'model.pkl'))
+    dataset_zip.seek(0); dataset_zip.save(os.path.join(UPLOAD_FOLDER, 'dataset.zip'))
+    print("   ✅ All files saved.")
 
     # Upload dataset to Backblaze B2 (if configured)
     print("\n☁️  Uploading dataset to Backblaze B2...")
@@ -596,6 +619,79 @@ def get_config():
         'nftAddress':        NFT_ADDRESS,
         'marketplaceAddress': MARKETPLACE_ADDR,
     }), 200
+
+
+@app.route('/api/listing-prefs/<model_hash>', methods=['GET'])
+def get_listing_prefs(model_hash):
+    prefs = load_prefs()
+    return jsonify(prefs.get(model_hash, {'include_dataset': False})), 200
+
+
+@app.route('/api/listing-prefs/<model_hash>', methods=['POST'])
+def set_listing_prefs(model_hash):
+    data = request.get_json()
+    prefs = load_prefs()
+    prefs[model_hash] = {'include_dataset': bool(data.get('include_dataset', False))}
+    save_prefs(prefs)
+    return jsonify({'status': 'ok'}), 200
+
+
+@app.route('/api/artifacts/<model_hash>/download', methods=['GET'])
+def download_artifacts(model_hash):
+    """Serve a ZIP of model+script+config (and optionally dataset) to NFT owners.
+    Ownership is verified by checking the wallet address against the NFT contract on-chain.
+    The caller passes ?wallet=0x... as a query param.
+    """
+    import io
+    wallet = request.args.get('wallet', '').lower()
+    if not wallet:
+        return jsonify({'error': 'wallet query param required'}), 400
+
+    # Verify ownership on-chain
+    try:
+        nft_contract = w3.eth.contract(
+            address=Web3.to_checksum_address(NFT_ADDRESS), abi=NFT_ABI)
+        total = nft_contract.functions.totalSupply().call()
+        owner_token = None
+        for i in range(1, total + 1):
+            meta = nft_contract.functions.getModelMetadata(i).call()
+            stored_hash = meta[0]  # modelHash
+            if stored_hash.lower() == model_hash.lower():
+                owner = nft_contract.functions.ownerOf(i).call()
+                if owner.lower() == wallet:
+                    owner_token = i
+                    break
+        if owner_token is None:
+            return jsonify({'error': 'You are not the owner of this model NFT'}), 403
+    except Exception as e:
+        return jsonify({'error': f'Blockchain verification failed: {e}'}), 500
+
+    # Build ZIP with allowed files
+    mfolder = os.path.join(UPLOAD_FOLDER, model_hash[:16])
+    if not os.path.isdir(mfolder):
+        mfolder = UPLOAD_FOLDER  # fallback for older publishes
+
+    prefs = load_prefs()
+    include_dataset = prefs.get(model_hash, {}).get('include_dataset', False)
+
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for fname in ['model.pkl', 'train.py', 'trustmint.yml']:
+            fpath = os.path.join(mfolder, fname)
+            if os.path.exists(fpath):
+                zf.write(fpath, fname)
+        if include_dataset:
+            dpath = os.path.join(mfolder, 'dataset.zip')
+            if os.path.exists(dpath):
+                zf.write(dpath, 'dataset.zip')
+    zip_buffer.seek(0)
+
+    return send_file(
+        zip_buffer,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name=f'trustmint-model-{model_hash[:8]}.zip'
+    )
 
 
 if __name__ == '__main__':

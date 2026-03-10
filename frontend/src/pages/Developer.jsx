@@ -60,7 +60,6 @@ export default function Developer() {
     }
   };
 
-  // Load NFTs owned by the connected wallet
   const loadMyNFTs = useCallback(async () => {
     if (!walletAddress) return;
     setNftsLoading(true);
@@ -79,7 +78,11 @@ export default function Developer() {
             tokenId: i,
             modelHash: meta[0],
             datasetHash: meta[1],
+            merkleRoot: meta[2],
             ipfsCid: meta[3],
+            creator: meta[4],
+            mintedAt: new Date(Number(meta[5]) * 1000).toLocaleString(),
+            verified: meta[6],
             listed,
           });
         }
@@ -124,11 +127,30 @@ export default function Developer() {
     }
   };
 
-  const promptAndList = async (tokenId) => {
+  const promptAndList = async (tokenId, modelHash) => {
     const price = window.prompt(`Enter listing price in ETH for NFT #${tokenId}:`, '0.01');
     if (!price || isNaN(price) || Number(price) <= 0) return;
+
+    const includeDataset = window.confirm(
+      `Include dataset with purchase?\n\n` +
+      `YES → Buyers who purchase this NFT can also download your training dataset.\n` +
+      `NO  → Buyers only get the model file, training script, and config.`
+    );
+
+    // Save dataset preference to backend
+    if (modelHash) {
+      try {
+        await fetch(`${BACKEND}/api/listing-prefs/${modelHash}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ include_dataset: includeDataset }),
+        });
+      } catch (e) { console.warn('Could not save listing prefs:', e); }
+    }
+
     await listForSale(tokenId, price);
   };
+
 
   const downloadCLI = async () => {
     if (!isConnected) { showToast('Please connect your wallet first!', 'error'); return; }
@@ -234,44 +256,72 @@ export default function Developer() {
                 <p style={{ fontSize: '0.85rem' }}>Publish a model using the CLI to mint your first NFT.</p>
               </div>
             ) : (
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Token ID</th>
-                    <th>Model Hash</th>
-                    <th>IPFS CID</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {myNFTs.map(nft => (
-                    <tr key={nft.tokenId}>
-                      <td><strong>#{nft.tokenId}</strong></td>
-                      <td style={{ fontSize: '0.75rem', wordBreak: 'break-all' }}>{nft.modelHash.slice(0, 16)}...</td>
-                      <td style={{ fontSize: '0.75rem' }}>{nft.ipfsCid.slice(0, 16)}...</td>
-                      <td>
+              myNFTs.map(nft => {
+                const rowStyle = { display: 'flex', justifyContent: 'space-between', padding: '0.45rem 0', borderBottom: '1px solid var(--border)', gap: '1rem', flexWrap: 'wrap' };
+                const monoStyle = { fontSize: '0.74rem', wordBreak: 'break-all', color: 'var(--text-secondary)', fontFamily: 'monospace' };
+                return (
+                  <div key={nft.tokenId} style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '1.25rem', marginBottom: '1rem' }}>
+                    {/* Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                        <span style={{ fontSize: '1.3rem' }}>🤖</span>
+                        <strong style={{ fontSize: '1rem' }}>AI Model #{nft.tokenId}</strong>
+                        {nft.verified && <span style={{ color: '#10b981', fontSize: '0.8rem' }}>✅ Verified</span>}
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                         {nft.listed
-                          ? <span className={styles.statusPending}>🟢 Listed</span>
+                          ? <span className={styles.statusPending}>🟢 Listed on Marketplace</span>
                           : <span className={styles.statusVerified}>🔵 Minted</span>}
-                      </td>
-                      <td>
+                        <Link to={`/model/${nft.tokenId}`} className="btn btn-secondary" style={{ padding: '0.25rem 0.65rem', fontSize: '0.8rem' }}>View Page</Link>
                         {!nft.listed && (
                           <button
                             className="btn btn-primary"
-                            style={{ padding: '0.3rem 0.7rem', fontSize: '0.8rem' }}
+                            style={{ padding: '0.25rem 0.7rem', fontSize: '0.8rem' }}
                             disabled={listingTokenId === nft.tokenId}
-                            onClick={() => promptAndList(nft.tokenId)}
+                            onClick={() => promptAndList(nft.tokenId, nft.modelHash)}
                           >
                             {listingTokenId === nft.tokenId ? '⏳ Listing...' : '💰 List for Sale'}
                           </button>
                         )}
-                        {nft.listed && <span style={{ color: '#10b981', fontSize: '0.85rem' }}>✅ On Marketplace</span>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                    </div>
+
+                    {/* Details */}
+                    <div style={rowStyle}><span style={{ fontWeight: '500', minWidth: 120 }}>Minted At</span><span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{nft.mintedAt}</span></div>
+                    <div style={rowStyle}><span style={{ fontWeight: '500', minWidth: 120 }}>Model Hash</span><span style={monoStyle}>{nft.modelHash}</span></div>
+                    <div style={rowStyle}><span style={{ fontWeight: '500', minWidth: 120 }}>Dataset Hash</span><span style={monoStyle}>{nft.datasetHash}</span></div>
+                    <div style={rowStyle}><span style={{ fontWeight: '500', minWidth: 120 }}>IPFS CID</span><span style={monoStyle}>{nft.ipfsCid}</span></div>
+
+                    {/* Download */}
+                    <div style={{ ...rowStyle, borderBottom: 'none', alignItems: 'center', marginTop: '0.5rem' }}>
+                      <div>
+                        <span style={{ fontWeight: '500' }}>Download Bundle</span>
+                        <span style={{ marginLeft: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.78rem' }}>model.pkl · train.py · trustmint.yml</span>
+                      </div>
+                      <button
+                        className="btn btn-primary"
+                        style={{ padding: '0.3rem 0.8rem', fontSize: '0.82rem' }}
+                        onClick={async () => {
+                          try {
+                            showToast('⏳ Preparing download...', 'info');
+                            const url = `${BACKEND}/api/artifacts/${nft.modelHash}/download?wallet=${walletAddress}`;
+                            const res = await fetch(url);
+                            if (!res.ok) { const e = await res.json(); throw new Error(e.error); }
+                            const blob = await res.blob();
+                            const a = document.createElement('a');
+                            a.href = window.URL.createObjectURL(blob);
+                            a.download = `trustmint-model-${nft.tokenId}.zip`;
+                            a.click();
+                            showToast('✅ Download started!', 'success');
+                          } catch (e) { showToast('Download failed: ' + e.message, 'error'); }
+                        }}
+                      >
+                        ⬇️ Download All Files
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>

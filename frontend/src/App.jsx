@@ -4,6 +4,7 @@ import Home from './pages/Home';
 import Marketplace from './pages/Marketplace';
 import Developer from './pages/Developer';
 import ModelDetail from './pages/ModelDetail';
+import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Navbar from './components/Navbar';
@@ -30,8 +31,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Placeholder for Profile (create src/pages/Profile.jsx if missing)
-  const Profile = () => <div style={{ padding: '2rem', textAlign: 'center' }}><h1>Profile</h1><p>Coming soon!</p></div>;
+  // Theme + auth handled above — Profile is now a real component
 
   return (
     <>

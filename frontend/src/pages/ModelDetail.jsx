@@ -238,50 +238,59 @@ export default function ModelDetail() {
                         </div>
                     </div>
 
-                    {/* IPFS / Files — Owner only */}
+                    {/* Files — Owner only */}
                     {isOwner ? (
                         <div style={cardStyle}>
-                            <h4 style={{ margin: '0 0 1rem' }}>📦 Model Files (IPFS)</h4>
+                            <h4 style={{ margin: '0 0 0.5rem' }}>📦 Your Files</h4>
+                            <p style={{ margin: '0 0 1rem', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
+                                As the owner, you have access to all model artifacts.
+                            </p>
                             <div style={rowStyle}>
-                                <span style={{ fontWeight: '500' }}>Model CID</span>
-                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap', flex: 1, justifyContent: 'flex-end' }}>
-                                    <span style={hashStyle}>{model.ipfsCid}</span>
-                                    <button
-                                        className="btn btn-secondary"
-                                        style={{ padding: '0.2rem 0.65rem', fontSize: '0.78rem', flexShrink: 0 }}
-                                        onClick={async () => {
-                                            try {
-                                                showToast('⏳ Downloading model...', 'info');
-                                                const url = `https://gateway.pinata.cloud/ipfs/${model.ipfsCid}`;
-                                                const res = await fetch(url);
-                                                const blob = await res.blob();
-                                                const a = document.createElement('a');
-                                                a.href = window.URL.createObjectURL(blob);
-                                                a.download = `model-${model.tokenId}.pkl`;
-                                                document.body.appendChild(a);
-                                                a.click();
-                                                document.body.removeChild(a);
-                                                showToast('✅ Download started!', 'success');
-                                            } catch (e) {
-                                                showToast('Download failed: ' + e.message, 'error');
-                                            }
-                                        }}
-                                    >
-                                        ⬇️ Download
-                                    </button>
-                                </div>
+                                <span style={{ fontWeight: '500' }}>Model CID (IPFS)</span>
+                                <span style={hashStyle}>{model.ipfsCid}</span>
                             </div>
-                            <div style={{ ...rowStyle, borderBottom: 'none' }}>
-                                <span style={{ fontWeight: '500' }}>Metadata URI</span>
-                                <span style={hashStyle}>{model.tokenUri}</span>
+                            <div style={{ ...rowStyle, borderBottom: 'none', alignItems: 'center' }}>
+                                <div>
+                                    <p style={{ margin: 0, fontWeight: '500' }}>Download Bundle</p>
+                                    <p style={{ margin: '0.2rem 0 0', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
+                                        Includes: model.pkl · train.py · trustmint.yml{model.includeDataset ? ' · dataset.zip' : ''}
+                                    </p>
+                                </div>
+                                <button
+                                    className="btn btn-primary"
+                                    style={{ padding: '0.4rem 1rem', fontSize: '0.9rem', flexShrink: 0 }}
+                                    onClick={async () => {
+                                        try {
+                                            showToast('⏳ Preparing your files...', 'info');
+                                            const url = `${BACKEND}/api/artifacts/${model.modelHash}/download?wallet=${account}`;
+                                            const res = await fetch(url);
+                                            if (!res.ok) {
+                                                const err = await res.json();
+                                                throw new Error(err.error || res.statusText);
+                                            }
+                                            const blob = await res.blob();
+                                            const a = document.createElement('a');
+                                            a.href = window.URL.createObjectURL(blob);
+                                            a.download = `trustmint-model-${model.tokenId}.zip`;
+                                            document.body.appendChild(a);
+                                            a.click();
+                                            document.body.removeChild(a);
+                                            showToast('✅ Download started!', 'success');
+                                        } catch (e) {
+                                            showToast('Download failed: ' + e.message, 'error');
+                                        }
+                                    }}
+                                >
+                                    ⬇️ Download All Files
+                                </button>
                             </div>
                         </div>
                     ) : (
                         <div style={{ ...cardStyle, textAlign: 'center', padding: '2rem' }}>
                             <p style={{ fontSize: '1.5rem', margin: '0 0 0.5rem' }}>🔒</p>
-                            <p style={{ fontWeight: '600', margin: '0 0 0.4rem' }}>Model file is for owners only</p>
+                            <p style={{ fontWeight: '600', margin: '0 0 0.4rem' }}>Model files are for owners only</p>
                             <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: 0 }}>
-                                Purchase this NFT to get access to the model file download and IPFS CID.
+                                Purchase this NFT to get access to model.pkl, train.py, trustmint.yml and optionally the dataset.
                             </p>
                         </div>
                     )}
