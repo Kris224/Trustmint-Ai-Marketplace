@@ -3,6 +3,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';  // No <Router> here
 import Home from './pages/Home';
 import Marketplace from './pages/Marketplace';
 import Developer from './pages/Developer';
+import ModelDetail from './pages/ModelDetail';
+import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Navbar from './components/Navbar';
@@ -29,8 +31,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Placeholder for Profile (create src/pages/Profile.jsx if missing)
-  const Profile = () => <div style={{ padding: '2rem', textAlign: 'center' }}><h1>Profile</h1><p>Coming soon!</p></div>;
+  // Theme + auth handled above — Profile is now a real component
 
   return (
     <>
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="/login" element={!isLoggedIn ? <Login onLogin={() => setIsLoggedIn(true)} /> : <Navigate to="/developer" />} />
           <Route path="/signup" element={!isLoggedIn ? <Signup /> : <Navigate to="/developer" />} />
           <Route path="/marketplace" element={isLoggedIn ? <Marketplace /> : <Navigate to="/login" />} />
+          <Route path="/model/:tokenId" element={isLoggedIn ? <ModelDetail /> : <Navigate to="/login" />} />
           <Route path="/developer" element={isLoggedIn ? <Developer /> : <Navigate to="/login" />} />
           <Route path="/profile" element={isLoggedIn ? <Profile /> : <Navigate to="/login" />} />
         </Routes>

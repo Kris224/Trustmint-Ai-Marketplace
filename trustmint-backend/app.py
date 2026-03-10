@@ -7,16 +7,41 @@ import binascii
 import json
 import subprocess
 import requests
+import boto3
+from botocore.client import Config
 from datetime import datetime
+from dotenv import load_dotenv
 from ecdsa import VerifyingKey, NIST256p, BadSignatureError
 from ecdsa.util import sigdecode_der
 from eth_account.messages import encode_defunct
 from web3 import Web3
 from flask_cors import CORS
 
+load_dotenv()  # Load variables from .env file into os.environ
+
+
 
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# Per-model artifact folder helper
+def model_folder(model_hash: str) -> str:
+    folder = os.path.join(UPLOAD_FOLDER, model_hash[:16])
+    os.makedirs(folder, exist_ok=True)
+    return folder
+
+# Listing preferences store (simple JSON file on disk)
+PREFS_FILE = os.path.join(UPLOAD_FOLDER, 'listing_prefs.json')
+
+def load_prefs() -> dict:
+    if os.path.exists(PREFS_FILE):
+        with open(PREFS_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+def save_prefs(prefs: dict):
+    with open(PREFS_FILE, 'w') as f:
+        json.dump(prefs, f, indent=2)
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 GOLDEN_PUBLIC_KEY_PEM = """-----BEGIN PUBLIC KEY-----
@@ -34,6 +59,41 @@ MARKETPLACE_ADDR  = os.getenv('MARKETPLACE_CONTRACT',
                               '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9')
 PINATA_JWT        = os.getenv('PINATA_JWT', '')
 DEFAULT_PRICE_WEI = int(os.getenv('DEFAULT_LISTING_PRICE_WEI', str(Web3.to_wei(0.01, 'ether'))))
+
+# ─── Backblaze B2 Configuration ──────────────────────────────────────────────
+B2_KEY_ID       = os.getenv('B2_KEY_ID', '')
+B2_APP_KEY      = os.getenv('B2_APP_KEY', '')
+B2_REGION       = os.getenv('B2_REGION', 'us-west-004')  # from your B2 bucket endpoint
+B2_BUCKET_NAME  = os.getenv('B2_BUCKET_NAME', 'trustmint-datasets')
+
+def get_b2_client():
+    """Returns a boto3 S3 client configured for Backblaze B2, or None if not configured."""
+    if not all([B2_KEY_ID, B2_APP_KEY]):
+        return None
+    return boto3.client(
+        's3',
+        endpoint_url=f'https://s3.{B2_REGION}.backblazeb2.com',
+        aws_access_key_id=B2_KEY_ID,
+        aws_secret_access_key=B2_APP_KEY,
+        config=Config(signature_version='s3v4'),
+        region_name=B2_REGION
+    )
+
+def upload_dataset_to_b2(file_path, wallet_address, model_hash):
+    """Upload dataset zip to Backblaze B2. Returns public URL or None."""
+    b2 = get_b2_client()
+    if not b2:
+        print("⚠️  B2 not configured — dataset saved locally only.")
+        return None
+    try:
+        key = f"datasets/{wallet_address}/{model_hash[:8]}/dataset.zip"
+        b2.upload_file(file_path, B2_BUCKET_NAME, key)
+        url = f"https://s3.{B2_REGION}.backblazeb2.com/{B2_BUCKET_NAME}/{key}"
+        print(f"   ✅ Dataset uploaded to B2 → {url}")
+        return url
+    except Exception as e:
+        print(f"   ⚠️  B2 upload failed: {e}. Dataset kept locally.")
+        return None
 
 # ─── Load Contract ABIs ────────────────────────────────────────────────────────
 BLOCKCHAIN_DIR = os.path.join(os.path.dirname(__file__), '..', 'blockchain')
@@ -145,7 +205,7 @@ def mint_nft(model_hash, dataset_hash, ipfs_cid, metadata_uri, creator_address):
     ).build_transaction({
         'from': deployer_account.address,
         'nonce': nonce,
-        'gas': 500000,
+        'gas': 1000000,
         'gasPrice': w3.eth.gas_price,
     })
     signed = w3.eth.account.sign_transaction(tx, DEPLOYER_KEY)
@@ -380,15 +440,29 @@ def handle_publish():
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
 
-    # ── 3. Save artifacts ──────────────────────────────────────────────────────
+    # ── 3. Save artifacts per model hash ─────────────────────────────────────
     print("\n▶️  3/5: Saving verified artifacts...")
-    model_save_path  = os.path.join(UPLOAD_FOLDER, 'model.pkl')
-    config_file.save(os.path.join(UPLOAD_FOLDER, 'trustmint.yml'))
+    mfolder = model_folder(cli_model_hash)
+    model_save_path     = os.path.join(mfolder, 'model.pkl')
+    dataset_save_path   = os.path.join(mfolder, 'dataset.zip')
+    config_file.save(os.path.join(mfolder, 'trustmint.yml'))
     model_file.save(model_save_path)
     dataset_zip.seek(0)
-    dataset_zip.save(os.path.join(UPLOAD_FOLDER, 'dataset.zip'))
-    script_file.save(os.path.join(UPLOAD_FOLDER, 'train.py'))
+    dataset_zip.save(dataset_save_path)
+    script_file.save(os.path.join(mfolder, 'train.py'))
+    # Also keep flat copies for legacy compatibility
+    model_file.seek(0); model_file.save(os.path.join(UPLOAD_FOLDER, 'model.pkl'))
+    dataset_zip.seek(0); dataset_zip.save(os.path.join(UPLOAD_FOLDER, 'dataset.zip'))
     print("   ✅ All files saved.")
+
+    # Upload dataset to Backblaze B2 (if configured)
+    print("\n☁️  Uploading dataset to Backblaze B2...")
+    b2_dataset_url = upload_dataset_to_b2(dataset_save_path, wallet_address, cli_model_hash)
+    if b2_dataset_url:
+        print(f"   ✅ Dataset stored at: {b2_dataset_url}")
+    else:
+        print("   ℹ️  Dataset stored locally only (set B2 env vars to enable cloud storage).")  
+
 
     # ── 4. Upload to IPFS ─────────────────────────────────────────────────────
     print("\n▶️  4/5: Uploading model to IPFS (Pinata)...")
@@ -536,6 +610,88 @@ def get_models():
     except Exception as e:
         print(f"❌ /api/models error: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/config', methods=['GET'])
+def get_config():
+    """Return current contract addresses so the frontend never needs hardcoded values."""
+    return jsonify({
+        'nftAddress':        NFT_ADDRESS,
+        'marketplaceAddress': MARKETPLACE_ADDR,
+    }), 200
+
+
+@app.route('/api/listing-prefs/<model_hash>', methods=['GET'])
+def get_listing_prefs(model_hash):
+    prefs = load_prefs()
+    return jsonify(prefs.get(model_hash, {'include_dataset': False})), 200
+
+
+@app.route('/api/listing-prefs/<model_hash>', methods=['POST'])
+def set_listing_prefs(model_hash):
+    data = request.get_json()
+    prefs = load_prefs()
+    prefs[model_hash] = {'include_dataset': bool(data.get('include_dataset', False))}
+    save_prefs(prefs)
+    return jsonify({'status': 'ok'}), 200
+
+
+@app.route('/api/artifacts/<model_hash>/download', methods=['GET'])
+def download_artifacts(model_hash):
+    """Serve a ZIP of model+script+config (and optionally dataset) to NFT owners.
+    Ownership is verified by checking the wallet address against the NFT contract on-chain.
+    The caller passes ?wallet=0x... as a query param.
+    """
+    import io
+    wallet = request.args.get('wallet', '').lower()
+    if not wallet:
+        return jsonify({'error': 'wallet query param required'}), 400
+
+    # Verify ownership on-chain
+    try:
+        nft_contract = w3.eth.contract(
+            address=Web3.to_checksum_address(NFT_ADDRESS), abi=NFT_ABI)
+        total = nft_contract.functions.totalSupply().call()
+        owner_token = None
+        for i in range(1, total + 1):
+            meta = nft_contract.functions.getModelMetadata(i).call()
+            stored_hash = meta[0]  # modelHash
+            if stored_hash.lower() == model_hash.lower():
+                owner = nft_contract.functions.ownerOf(i).call()
+                if owner.lower() == wallet:
+                    owner_token = i
+                    break
+        if owner_token is None:
+            return jsonify({'error': 'You are not the owner of this model NFT'}), 403
+    except Exception as e:
+        return jsonify({'error': f'Blockchain verification failed: {e}'}), 500
+
+    # Build ZIP with allowed files
+    mfolder = os.path.join(UPLOAD_FOLDER, model_hash[:16])
+    if not os.path.isdir(mfolder):
+        mfolder = UPLOAD_FOLDER  # fallback for older publishes
+
+    prefs = load_prefs()
+    include_dataset = prefs.get(model_hash, {}).get('include_dataset', False)
+
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for fname in ['model.pkl', 'train.py', 'trustmint.yml']:
+            fpath = os.path.join(mfolder, fname)
+            if os.path.exists(fpath):
+                zf.write(fpath, fname)
+        if include_dataset:
+            dpath = os.path.join(mfolder, 'dataset.zip')
+            if os.path.exists(dpath):
+                zf.write(dpath, 'dataset.zip')
+    zip_buffer.seek(0)
+
+    return send_file(
+        zip_buffer,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name=f'trustmint-model-{model_hash[:8]}.zip'
+    )
 
 
 if __name__ == '__main__':
