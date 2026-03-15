@@ -199,14 +199,14 @@ def mint_nft(model_hash, dataset_hash, ipfs_cid, metadata_uri, creator_address):
     """Mint a TrustmintNFT. Returns (token_id, tx_hash) or raises."""
     contract = w3.eth.contract(address=Web3.to_checksum_address(NFT_ADDRESS), abi=NFT_ABI)
     merkle_root = bytes.fromhex(model_hash[:64])  # Use model hash prefix as merkle root
-    nonce = w3.eth.get_transaction_count(deployer_account.address)
+    nonce = w3.eth.get_transaction_count(deployer_account.address, 'pending')
     tx = contract.functions.mintModel(
         model_hash, dataset_hash, merkle_root, ipfs_cid, metadata_uri
     ).build_transaction({
         'from': deployer_account.address,
         'nonce': nonce,
         'gas': 1000000,
-        'gasPrice': w3.eth.gas_price,
+        'gasPrice': int(w3.eth.gas_price * 1.5), # Add bit of buffer for Amoy
     })
     signed = w3.eth.account.sign_transaction(tx, DEPLOYER_KEY)
     tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
@@ -229,8 +229,9 @@ def mint_nft(model_hash, dataset_hash, ipfs_cid, metadata_uri, creator_address):
     # Transfer NFT to the actual developer wallet
     if creator_address and creator_address.lower() != deployer_account.address.lower():
         try:
-            transfer_nonce = w3.eth.get_transaction_count(deployer_account.address)
-            transfer_tx = contract.functions.safeTransferFrom(
+            transfer_nonce = w3.eth.get_transaction_count(deployer_account.address, 'pending')
+            # Use transferFrom instead of safeTransferFrom to avoid overloaded fn issues in Web3.py
+            transfer_tx = contract.functions.transferFrom(
                 deployer_account.address,
                 Web3.to_checksum_address(creator_address),
                 token_id
@@ -238,11 +239,11 @@ def mint_nft(model_hash, dataset_hash, ipfs_cid, metadata_uri, creator_address):
                 'from': deployer_account.address,
                 'nonce': transfer_nonce,
                 'gas': 200000,
-                'gasPrice': w3.eth.gas_price,
+                'gasPrice': int(w3.eth.gas_price * 1.5),
             })
             signed_transfer = w3.eth.account.sign_transaction(transfer_tx, DEPLOYER_KEY)
-            w3.eth.send_raw_transaction(signed_transfer.raw_transaction)
-            w3.eth.wait_for_transaction_receipt(signed_transfer.raw_transaction)
+            tx_hash_transfer = w3.eth.send_raw_transaction(signed_transfer.raw_transaction)
+            w3.eth.wait_for_transaction_receipt(tx_hash_transfer)
             print(f"   ✅ NFT #{token_id} transferred to {creator_address}")
         except Exception as e:
             print(f"   ⚠️  Transfer to developer failed (NFT stays with deployer): {e}")
@@ -264,28 +265,28 @@ def list_on_marketplace(token_id, price_wei, seller_address):
     # Instead, list from deployer's perspective only if it still owns the token.
     if owner.lower() == deployer_account.address.lower():
         # Approve marketplace
-        nonce = w3.eth.get_transaction_count(deployer_account.address)
+        nonce = w3.eth.get_transaction_count(deployer_account.address, 'pending')
         approve_tx = nft_contract.functions.approve(
             Web3.to_checksum_address(MARKETPLACE_ADDR), token_id
         ).build_transaction({
             'from': deployer_account.address,
             'nonce': nonce,
             'gas': 100000,
-            'gasPrice': w3.eth.gas_price,
+            'gasPrice': int(w3.eth.gas_price * 1.5),
         })
         signed_approve = w3.eth.account.sign_transaction(approve_tx, DEPLOYER_KEY)
-        w3.eth.send_raw_transaction(signed_approve.raw_transaction)
-        w3.eth.wait_for_transaction_receipt(signed_approve.raw_transaction)
+        tx_hash_approve = w3.eth.send_raw_transaction(signed_approve.raw_transaction)
+        w3.eth.wait_for_transaction_receipt(tx_hash_approve)
 
         # List on marketplace
-        list_nonce = w3.eth.get_transaction_count(deployer_account.address)
+        list_nonce = w3.eth.get_transaction_count(deployer_account.address, 'pending')
         list_tx = market_contract.functions.listModel(
             Web3.to_checksum_address(NFT_ADDRESS), token_id, price_wei
         ).build_transaction({
             'from': deployer_account.address,
             'nonce': list_nonce,
             'gas': 200000,
-            'gasPrice': w3.eth.gas_price,
+            'gasPrice': int(w3.eth.gas_price * 1.5),
         })
         signed_list = w3.eth.account.sign_transaction(list_tx, DEPLOYER_KEY)
         list_tx_hash = w3.eth.send_raw_transaction(signed_list.raw_transaction)

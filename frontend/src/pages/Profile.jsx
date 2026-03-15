@@ -7,7 +7,11 @@ import { onAuthStateChanged } from 'firebase/auth';
 const BACKEND = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
 const NFT_ADDRESS = import.meta.env.VITE_NFT_ADDRESS;
 const MARKET_ADDRESS = import.meta.env.VITE_MARKETPLACE_ADDRESS;
-const RPC_URL = 'http://127.0.0.1:8545'; // Direct node — avoids MetaMask eth_getLogs issues
+
+const RPC_MAPPING = {
+  31337: 'http://127.0.0.1:8545',
+  80002: 'https://rpc-amoy.polygon.technology/',
+};
 
 const NFT_ABI = [
   'function totalSupply() view returns (uint256)',
@@ -77,8 +81,13 @@ export default function Profile() {
     setLoading(true);
     setError('');
     try {
+      const web3Provider = new ethers.BrowserProvider(window.ethereum);
+      const network = await web3Provider.getNetwork();
+      const chainId = Number(network.chainId);
+      const rpcUrl = RPC_MAPPING[chainId] || RPC_MAPPING[31337];
+
       // Use direct RPC provider for event queries (MetaMask blocks eth_getLogs)
-      const rpc = new ethers.JsonRpcProvider(RPC_URL);
+      const rpc = new ethers.JsonRpcProvider(rpcUrl);
       const nft = new ethers.Contract(NFT_ADDRESS, NFT_ABI, rpc);
       const market = new ethers.Contract(MARKET_ADDRESS, MARKET_ABI, rpc);
 

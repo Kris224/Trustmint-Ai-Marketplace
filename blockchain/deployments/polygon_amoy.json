@@ -1,0 +1,10 @@
+{
+  "network": "polygon_amoy",
+  "deployer": "0xb16ec82FB688103773Bd6D9F1f1E9d236520e940",
+  "contracts": {
+    "TrustmintNFT": "0x88647FcB13B6a26A06e3DAABAF2E25C6A8d1E059",
+    "TrustmintMarketplace": "0xA71Cd03CeEf683Cc57E7d95DAC9AEA989ADe97c6"
+  },
+  "timestamp": "2026-03-15T10:54:56.749Z",
+  "blockNumber": 35222282
+}

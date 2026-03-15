@@ -93,8 +93,14 @@ export default function ModelDetail() {
             const market = new ethers.Contract(MARKET_ADDRESS, MARKET_ABI, signer);
 
             showToast('Confirm the purchase in MetaMask...', 'info');
+            // Polygon Amoy minimum is ~25 gwei, overriding to avoid under-estimation errors
+            const txOptions = {
+                maxFeePerGas: ethers.parseUnits('30', 'gwei'),
+                maxPriorityFeePerGas: ethers.parseUnits('30', 'gwei')
+            };
             const tx = await market.purchaseModel(model.listingId, {
                 value: model.priceWei,
+                ...txOptions
             });
             showToast('⏳ Transaction submitted, waiting for confirmation...', 'info');
             await tx.wait();

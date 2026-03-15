@@ -1,24 +1,28 @@
 #!/bin/bash
-# reset.sh — Run this every time you restart npx hardhat node
-# Usage: ./reset.sh (from the project root)
+# reset.sh — Run this every time you restart npx hardhat node or deploy to a new network
+# Usage: ./reset.sh [network] (from the project root)
+# Example: ./reset.sh localhost (default)
+#          ./reset.sh polygon_amoy
 
 set -e
 
+NETWORK=${1:-localhost}
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 BLOCKCHAIN_DIR="$PROJECT_ROOT/blockchain"
 BACKEND_ENV="$PROJECT_ROOT/trustmint-backend/.env"
 FRONTEND_ENV="$PROJECT_ROOT/frontend/.env"
 
-echo "🚀 Deploying contracts to local Hardhat node..."
+echo "🚀 Deploying contracts to $NETWORK..."
 cd "$BLOCKCHAIN_DIR"
-npx hardhat run scripts/deploy.cjs --network localhost
+npx hardhat run scripts/deploy.cjs --network $NETWORK
 
-# Read new addresses from localhost.json
-NFT_ADDR=$(node -e "const f=require('./deployments/localhost.json'); console.log(f.contracts.TrustmintNFT)")
-MKT_ADDR=$(node -e "const f=require('./deployments/localhost.json'); console.log(f.contracts.TrustmintMarketplace)")
+# Read new addresses from the deployment json
+DEPLOYMENT_FILE="./deployments/${NETWORK}.json"
+NFT_ADDR=$(node -e "const f=require('$DEPLOYMENT_FILE'); console.log(f.contracts.TrustmintNFT)")
+MKT_ADDR=$(node -e "const f=require('$DEPLOYMENT_FILE'); console.log(f.contracts.TrustmintMarketplace)")
 
 echo ""
-echo "📝 New contract addresses:"
+echo "📝 New contract addresses for $NETWORK:"
 echo "   TrustmintNFT:         $NFT_ADDR"
 echo "   TrustmintMarketplace: $MKT_ADDR"
 
@@ -39,5 +43,7 @@ echo ""
 echo "👉 Next steps:"
 echo "   1. Restart: python app.py   (in trustmint-backend/)"
 echo "   2. Restart: npm run dev     (in frontend/)"
-echo "   3. MetaMask → Settings → Advanced → Clear activity and nonce data"
+if [ "$NETWORK" = "localhost" ]; then
+    echo "   3. MetaMask → Settings → Advanced → Clear activity and nonce data"
+fi
 echo ""
