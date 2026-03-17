@@ -106,14 +106,20 @@ export default function Developer() {
       const market = new ethers.Contract(MARKET_ADDRESS, MARKET_ABI, signer);
       const priceWei = ethers.parseEther(priceEth.toString());
 
+      // Polygon Amoy requires a minimum of 25 gwei, but MetaMask frequently under-estimates it.
+      const txOptions = {
+        maxFeePerGas: ethers.parseUnits('30', 'gwei'),
+        maxPriorityFeePerGas: ethers.parseUnits('30', 'gwei')
+      };
+
       // Step 1: Approve marketplace to transfer the NFT
       showToast('Step 1/2: Approving marketplace in MetaMask...', 'info');
-      const approveTx = await nft.approve(MARKET_ADDRESS, tokenId);
+      const approveTx = await nft.approve(MARKET_ADDRESS, tokenId, txOptions);
       await approveTx.wait();
 
       // Step 2: List on marketplace
       showToast('Step 2/2: Listing NFT on marketplace...', 'info');
-      const listTx = await market.listModel(NFT_ADDRESS, tokenId, priceWei);
+      const listTx = await market.listModel(NFT_ADDRESS, tokenId, priceWei, txOptions);
       await listTx.wait();
 
       showToast(`🎉 NFT #${tokenId} listed for ${priceEth} ETH!`, 'success');
