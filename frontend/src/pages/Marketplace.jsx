@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import styles from './Marketplace.module.css';
 
-const BACKEND = 'http://localhost:5001';
+const BACKEND = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
 
 const ModelCard = ({ token_id, name, price_eth, creator, ipfs_cid, listing_id, verified }) => (
   <div className={styles.card}>
