@@ -345,7 +345,7 @@ def download_cli():
         print("🔨 Building wallet-bound CLI binary...")
         ldflags = (
             f'-X trustmint.com/cli/cmd.WalletAddress={wallet_address} '
-            f'-X trustmint.com/cli/cmd.BackendURL=https://trustmint-ai-marketplace.onrender.com'
+            f'-X trustmint.com/cli/cmd.BackendURL=http://127.0.0.1:5001'
         )
         result = subprocess.run(
             ['go', 'build', '-ldflags', ldflags, '-o', 'trustmint', '.'],

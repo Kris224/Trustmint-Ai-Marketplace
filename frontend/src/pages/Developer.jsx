@@ -64,6 +64,23 @@ export default function Developer() {
     if (!walletAddress) return;
     setNftsLoading(true);
     try {
+      // Force MetaMask to use a robust Amoy RPC before making contract calls
+      try {
+        await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x13882' }] });
+      } catch (switchError) {
+        if (switchError.code === 4902) {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: '0x13882',
+              chainName: 'Polygon Amoy (Robust RPC)',
+              rpcUrls: ['https://polygon-amoy.drpc.org/'],
+              nativeCurrency: { name: 'MATIC', symbol: 'MATIC', decimals: 18 }
+            }]
+          });
+        }
+      }
+
       const provider = new ethers.BrowserProvider(window.ethereum);
       const nft = new ethers.Contract(NFT_ADDRESS, NFT_ABI, provider);
       const market = new ethers.Contract(MARKET_ADDRESS, MARKET_ABI, provider);
