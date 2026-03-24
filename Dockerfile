@@ -30,4 +30,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Run gunicorn when the container launches. 
 # Gunicorn will automatically use the $PORT variable provided by Render.
-CMD ["gunicorn", "app:app"]
+CMD ["gunicorn", "--timeout", "120", "app:app"]
