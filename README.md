@@ -82,6 +82,48 @@ Many AI marketplaces face challenges like:
 
 ---
 
+## 🚀 Quick Start: Full System
+
+### 1. Run the Backend Server
+The backend server handles proof verification and artifact storage.
+
+```bash
+cd trustmint-backend
+# Ensure dependencies are installed (e.g. Flask)
+python3 app.py
+```
+*Server runs on http://localhost:5001*
+
+### 2. Run the Training Workflow
+Open a new terminal to run the training + verification flow.
+
+```bash
+cd trustmint-starter-kit
+
+# Make scripts executable
+chmod +x start-training.sh publish-artifacts.sh
+
+# Step 1: Start the secure training environment
+./start-training.sh
+```
+
+**Inside the Docker container:**
+```bash
+# Run the training command
+trustmint train
+
+# Exit the container when done
+exit
+```
+
+**Back on your host machine:**
+```bash
+# Step 2: Publish and verify artifacts
+./publish-artifacts.sh
+```
+
+---
+
 ## 🔧 Getting Started (Frontend Demo)
 
 ```bash
@@ -93,20 +135,19 @@ npm run dev
 Open http://localhost:5173
  in your browser.
 ```
-## 🛠 Future Development
-
-Integrate real blockchain for proof storage
-
-Implement wallet-based authentication & payments
-
-Add real model uploads & verification logic
-
-Improve UX with live data, charts, and analytics
+## 🚧 Project Status
+- [x] **CLI Tool**: Secure, Dockerized environment for training AI models.
+- [x] **Proof Generation**: Generation of cryptographic Proof-of-Training (PoT).
+- [x] **Backend**: Basic verification server and artifact separation.
+- [x] **Frontend Demo**: Interactive UI for the marketplace.
+- [ ] **Blockchain Integration**: Smart contracts for immutable proof storage.
+- [ ] **Wallet Authentication**: Metamask integration for users.
+- [ ] **Live Marketplace**: Full integration of uploads/verification with the frontend.
 
 
 ## 💡 Notes
 
-This repository currently contains the frontend demo UI. The full TrustMint system consists of:
+The full TrustMint system consists of:
 
 CLI for secure training
 

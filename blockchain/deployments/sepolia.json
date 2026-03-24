@@ -1,0 +1,10 @@
+{
+  "network": "sepolia",
+  "deployer": "0x46daf0b0F5d2d05BB7C5Ea2673fAC279f953FdDE",
+  "contracts": {
+    "TrustmintNFT": "0x670Fda4Ad6484Cd108e302B36179784004D138eb",
+    "TrustmintMarketplace": "0x58F4b2BE0d39ACf45726FcA660A5677eBa83BFA0"
+  },
+  "timestamp": "2026-03-12T06:19:03.205Z",
+  "blockNumber": 10431260
+}

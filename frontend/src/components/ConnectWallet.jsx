@@ -41,7 +41,16 @@ function ConnectWallet({ isLoggedIn }) {
   return (
     <div style={{ padding: "10px" }}>
       {account ? (
-        <p>✅ Connected Wallet: {account}</p>
+        <div style={{
+          backgroundColor: "rgba(16,185,129,0.1)",
+          color: "#10b981",
+          border: "1px solid rgba(16,185,129,0.3)",
+          padding: "6px 12px",
+          borderRadius: "6px",
+          fontSize: "0.9rem"
+        }}>
+          {account.slice(0, 6)}...{account.slice(-4)}
+        </div>
       ) : (
         <button
           onClick={connectWallet}

@@ -1,0 +1,9 @@
+flask
+flask-cors
+ecdsa
+web3
+eth-account
+requests
+gunicorn
+boto3
+python-dotenv

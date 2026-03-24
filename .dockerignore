@@ -1,0 +1,7 @@
+node_modules
+.git
+frontend
+blockchain/node_modules
+trustmint-backend/venv
+trustmint-backend/__pycache__
+trustmint-backend/uploads

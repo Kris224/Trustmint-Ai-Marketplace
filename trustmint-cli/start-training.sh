@@ -2,7 +2,7 @@
 set -e
 
 # --- Configuration ---
-DOCKER_IMAGE="kris20204/trustmint-runner:latest"
+DOCKER_IMAGE="20demo/trustmint-cli:latest"
 CONFIG_FILE="trustmint.yml"
 
 # --- Pre-flight Checks ---
