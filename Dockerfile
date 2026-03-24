@@ -17,10 +17,12 @@ WORKDIR /app
 # Copy the entire project (backend, CLI, and blockchain artifacts)
 COPY . /app
 
-# Switch to the Go CLI directory and ensure it builds correctly
-# This pre-downloads modules so it doesn't do it on every request
+# Switch to the Go CLI directory
 WORKDIR /app/trustmint-cli
 RUN go mod download
+
+# Precompile the CLI with a 42-character dummy wallet address
+RUN go build -ldflags "-X trustmint.com/cli/cmd.WalletAddress=0x0000000000000000000000000000000000000000 -X trustmint.com/cli/cmd.BackendURL=https://trustmint-ai-marketplace.onrender.com" -o /app/trustmint-backend/trustmint-template .
 
 # Set working directory to the backend
 WORKDIR /app/trustmint-backend

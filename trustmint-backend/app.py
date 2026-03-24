@@ -337,33 +337,34 @@ def download_cli():
 
         print(f"✅ Signature verified for {wallet_address}")
 
-        # 2. Path to CLI source
-        cli_source_dir = os.path.join(os.path.dirname(__file__), '..', 'trustmint-cli')
+        # 2. Path to CLI source and Precompiled template
+        template_path = os.path.join(os.path.dirname(__file__), 'trustmint-template')
         cli_binary_src = '/tmp/trustmint'
 
-        # 3. Rebuild CLI with wallet address and backend URL baked in
-        print("🔨 Building wallet-bound CLI binary (Low Memory Mode)...")
-        ldflags = (
-            f'-X trustmint.com/cli/cmd.WalletAddress={wallet_address} '
-            f'-X trustmint.com/cli/cmd.BackendURL=https://trustmint-ai-marketplace.onrender.com'
-        )
+        # 3. Patch the pre-compiled binary with the real wallet address (Replaces Go Compiler)
+        print("🔨 Patching pre-compiled CLI binary with Wallet Address...")
         
-        # Limit Go compiler memory usage so Render's 512MB free tier doesn't OOM kill it
-        env = os.environ.copy()
-        env['GOMEMLIMIT'] = '250MiB'
-        env['GOGC'] = '30'
+        # If the template doesn't exist (e.g. running locally without Docker), build it first
+        if not os.path.exists(template_path):
+            cli_source_dir = os.path.join(os.path.dirname(__file__), '..', 'trustmint-cli')
+            ldflags = '-X trustmint.com/cli/cmd.WalletAddress=0x0000000000000000000000000000000000000000 -X trustmint.com/cli/cmd.BackendURL=https://trustmint-ai-marketplace.onrender.com'
+            subprocess.run(['go', 'build', '-ldflags', ldflags, '-o', template_path, '.'], cwd=cli_source_dir, check=True)
 
-        result = subprocess.run(
-            ['go', 'build', '-p', '1', '-ldflags', ldflags, '-o', cli_binary_src, '.'],
-            cwd=cli_source_dir,
-            env=env,
-            capture_output=True,
-            text=True
-        )
-        if result.returncode != 0:
-            print(f"❌ Build failed: {result.stderr}")
-            return jsonify({'error': f'CLI build failed: {result.stderr}'}), 500
-        print(f"✅ Wallet-bound CLI built for {wallet_address}")
+        with open(template_path, 'rb') as f:
+            binary_data = f.read()
+
+        dummy_addr = b"0x0000000000000000000000000000000000000000"
+        real_addr  = wallet_address.lower().encode('utf-8')
+
+        if len(real_addr) == 42:
+            binary_data = binary_data.replace(dummy_addr, real_addr)
+        else:
+            print("⚠️ Wallet address length mismatch!")
+
+        with open(cli_binary_src, 'wb') as f:
+            f.write(binary_data)
+        
+        os.chmod(cli_binary_src, 0o755)
 
         # 4. Return the binary
         return send_file(
