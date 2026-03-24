@@ -339,16 +339,16 @@ def download_cli():
 
         # 2. Path to CLI source
         cli_source_dir = os.path.join(os.path.dirname(__file__), '..', 'trustmint-cli')
-        cli_binary_src = os.path.join(cli_source_dir, 'trustmint')
+        cli_binary_src = '/tmp/trustmint'
 
         # 3. Rebuild CLI with wallet address and backend URL baked in
         print("🔨 Building wallet-bound CLI binary...")
         ldflags = (
             f'-X trustmint.com/cli/cmd.WalletAddress={wallet_address} '
-            f'-X trustmint.com/cli/cmd.BackendURL=http://127.0.0.1:5001'
+            f'-X trustmint.com/cli/cmd.BackendURL=https://trustmint-ai-marketplace.onrender.com'
         )
         result = subprocess.run(
-            ['go', 'build', '-ldflags', ldflags, '-o', 'trustmint', '.'],
+            ['go', 'build', '-ldflags', ldflags, '-o', cli_binary_src, '.'],
             cwd=cli_source_dir,
             capture_output=True,
             text=True
