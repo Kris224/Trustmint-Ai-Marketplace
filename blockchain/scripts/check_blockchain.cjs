@@ -6,9 +6,10 @@ async function main() {
     console.log("🔍 Checking Blockchain Data...\n");
 
     // Load deployment info
-    const deploymentFile = path.join(__dirname, "../deployments/localhost.json");
+    const networkName = hre.network.name;
+    const deploymentFile = path.join(__dirname, `../deployments/${networkName}.json`);
     if (!fs.existsSync(deploymentFile)) {
-        console.error("❌ No deployment found. Please run: npx hardhat run scripts/deploy.cjs --network localhost");
+        console.error(`❌ No deployment found. Please run: npx hardhat run scripts/deploy.cjs --network ${networkName}`);
         return;
     }
 
