@@ -342,14 +342,21 @@ def download_cli():
         cli_binary_src = '/tmp/trustmint'
 
         # 3. Rebuild CLI with wallet address and backend URL baked in
-        print("🔨 Building wallet-bound CLI binary...")
+        print("🔨 Building wallet-bound CLI binary (Low Memory Mode)...")
         ldflags = (
             f'-X trustmint.com/cli/cmd.WalletAddress={wallet_address} '
             f'-X trustmint.com/cli/cmd.BackendURL=https://trustmint-ai-marketplace.onrender.com'
         )
+        
+        # Limit Go compiler memory usage so Render's 512MB free tier doesn't OOM kill it
+        env = os.environ.copy()
+        env['GOMEMLIMIT'] = '250MiB'
+        env['GOGC'] = '30'
+
         result = subprocess.run(
-            ['go', 'build', '-ldflags', ldflags, '-o', cli_binary_src, '.'],
+            ['go', 'build', '-p', '1', '-ldflags', ldflags, '-o', cli_binary_src, '.'],
             cwd=cli_source_dir,
+            env=env,
             capture_output=True,
             text=True
         )
