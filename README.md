@@ -3,7 +3,7 @@
 **TrustMint** is a decentralized platform for training, verifying, and trading AI models with **Proof-of-Training (PoT)** guarantees. The platform ensures that AI models are authentic, verifiable, and securely shared in a marketplace, leveraging blockchain and IPFS technologies.
 
 ---
-
+*Website Link:* https://trustmint-ai-marketplace-o4ef.vercel.app/
 ## 🌟 Project Vision
 
 Many AI marketplaces face challenges like:
@@ -140,9 +140,9 @@ Open http://localhost:5173
 - [x] **Proof Generation**: Generation of cryptographic Proof-of-Training (PoT).
 - [x] **Backend**: Basic verification server and artifact separation.
 - [x] **Frontend Demo**: Interactive UI for the marketplace.
-- [ ] **Blockchain Integration**: Smart contracts for immutable proof storage.
-- [ ] **Wallet Authentication**: Metamask integration for users.
-- [ ] **Live Marketplace**: Full integration of uploads/verification with the frontend.
+- [x] **Blockchain Integration**: Smart contracts for immutable proof storage.
+- [x] **Wallet Authentication**: Metamask integration for users.
+- [x] **Live Marketplace**: Full integration of uploads/verification with the frontend.
 
 
 ## 💡 Notes
